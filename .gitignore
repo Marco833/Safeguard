@@ -1,0 +1,8 @@
+venv/
+__pycache__/
+*.pyc
+journal.db
+*.pdf
+*.docx
+*.txt
+!README.md
