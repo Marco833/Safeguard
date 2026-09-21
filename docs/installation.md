@@ -87,6 +87,15 @@ ls -la quarantaine/
 
 Le mail original ne doit pas atteindre le destinataire : la dernière ligne de `/var/mail/andre` doit afficher une notification `[SAFEGUARD] Envoi bloqué`, et un fichier `.eml` doit apparaître dans `quarantaine/`.
 
+## Compatibilité testée
+
+- **Debian 13** : installation et fonctionnement complet validés
+- **Ubuntu** (24.04) : installation et fonctionnement complet validés (seule adaptation nécessaire : le shebang de `filtre.py`)
+- **Kali Linux** : installation prévue, non testée à ce jour
+
+Note : sur Ubuntu, consulter les logs Postfix avec `sudo tail -f /var/log/mail.log` plutôt que `journalctl -u postfix`.
+
+
 ## Problèmes rencontrés et solutions (retour d'expérience)
 
 | Symptôme | Cause | Solution |
