@@ -91,7 +91,8 @@ Le mail original ne doit pas atteindre le destinataire : la dernière ligne de `
 
 - **Debian 13** : installation et fonctionnement complet validés
 - **Ubuntu** (24.04) : installation et fonctionnement complet validés (seule adaptation nécessaire : le shebang de `filtre.py`)
-- **Kali Linux** : installation prévue, non testée à ce jour
+- **Kali Linux (via WSL)** : détection et blocage fonctionnels (fichier mis en quarantaine confirmé). Limitation connue : la notification de blocage à l'expéditeur échoue sur cet environnement (`unknown user` en minuscule côté livraison locale Postfix), probablement lié à la gestion des utilisateurs sous WSL. Non bloquant pour la démonstration du jalon 1 (le blocage réel fonctionne), à approfondir si le temps le permet
+
 
 Note : sur Ubuntu, consulter les logs Postfix avec `sudo tail -f /var/log/mail.log` plutôt que `journalctl -u postfix`.
 
