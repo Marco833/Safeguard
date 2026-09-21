@@ -6,3 +6,4 @@ journal.db
 *.docx
 *.txt
 !README.md
+quarantaine/*.eml

@@ -1,11 +1,12 @@
 #!/home/andre/safeguard/venv/bin/python3
+from email.message import EmailMessage
 from pypdf import PdfReader
+import smtplib
 import docx
 import io
 import sys
 import os
 import email
-import subprocess
 import tempfile
 import magic
 import hashlib
@@ -29,7 +30,6 @@ EXTENSIONS_ATTENDUES = {
     "application/x-7z-compressed": [".7z"],
 }
 
-# Types dangereux : jamais acceptables en pièce jointe, quelle que soit l'extension
 TYPES_DANGEREUX = {
     "application/x-dosexec": "exécutable Windows (.exe)",
     "application/x-executable": "exécutable Linux",
@@ -98,24 +98,46 @@ def analyser_piece_jointe(nom_fichier, contenu):
 
     if vrai_type in TYPES_DANGEREUX:
         journaliser(nom_fichier, empreinte, vrai_type, extension, False)
-        return False
+        return False, f"type de fichier dangereux ({TYPES_DANGEREUX[vrai_type]})"
 
     nom_sans_derniere_ext = os.path.splitext(nom_fichier)[0]
     if os.path.splitext(nom_sans_derniere_ext)[1]:
         journaliser(nom_fichier, empreinte, vrai_type, extension, False)
-        return False
+        return False, "double extension suspecte"
 
     texte = extraire_texte(contenu, vrai_type)
     mot_trouve = contient_mot_sensible(texte)
     if mot_trouve:
         journaliser(nom_fichier, empreinte, vrai_type, extension, False, mot_trouve)
-        return False
+        return False, f"contenu sensible détecté (mot-clé : {mot_trouve})"
 
     extensions_valides = EXTENSIONS_ATTENDUES.get(vrai_type, [])
     coherent = extension in extensions_valides
 
     journaliser(nom_fichier, empreinte, vrai_type, extension, coherent)
-    return coherent
+    if not coherent:
+        return False, f"incohérence : extension {extension} mais type réel {vrai_type}"
+    return True, None
+
+def notifier_expediteur(sender, sujet_original, raisons):
+    notif = EmailMessage()
+    notif["Subject"] = f"[SAFEGUARD] Envoi bloqué : {sujet_original}"
+    notif["From"] = "safeguard@localhost"
+    notif["To"] = sender
+    corps = "Votre mail a été bloqué par Safeguard pour la raison suivante :\n\n"
+    corps += "\n".join(f"- {r}" for r in raisons)
+    corps += "\n\nContactez l'administrateur si vous pensez qu'il s'agit d'une erreur."
+    notif.set_content(corps)
+
+    with smtplib.SMTP("127.0.0.1", 10025) as smtp:
+        smtp.sendmail("safeguard@localhost", [sender], notif.as_bytes())
+
+def mettre_en_quarantaine(msg):
+    horodatage = datetime.now().strftime("%Y%m%d_%H%M%S")
+    chemin = f"/home/andre/safeguard/quarantaine/{horodatage}.eml"
+    with open(chemin, "wb") as f:
+        f.write(msg.as_bytes())
+    return chemin
 
 def main():
     sender = sys.argv[1]
@@ -124,20 +146,21 @@ def main():
     raw = sys.stdin.buffer.read()
     msg = email.message_from_bytes(raw)
 
-    alerte = False
+    raisons = []
     for part in msg.walk():
         nom = part.get_filename()
         if nom:
             contenu = part.get_payload(decode=True)
-            if contenu and not analyser_piece_jointe(nom, contenu):
-                alerte = True
+            if contenu:
+                ok, raison = analyser_piece_jointe(nom, contenu)
+                if not ok:
+                    raisons.append(f"{nom} : {raison}")
 
-    if alerte:
-        sujet_actuel = msg.get("Subject", "")
-        del msg["Subject"]
-        msg["Subject"] = f"[ALERTE SAFEGUARD] {sujet_actuel}"
+    if raisons:
+        mettre_en_quarantaine(msg)
+        notifier_expediteur(sender, msg.get("Subject", ""), raisons)
+        sys.exit(0)
 
-    import smtplib
     with smtplib.SMTP("127.0.0.1", 10025) as smtp:
         smtp.sendmail(sender, recipients, msg.as_bytes())
 
