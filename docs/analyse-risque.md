@@ -15,7 +15,7 @@ Pour chaque menace : description, impact si elle se réalise, mesure mise en pla
 ### 2. Camouflage par double extension
 **Menace** : un fichier nommé `facture.pdf.exe` peut tromper un utilisateur qui ne voit que la première partie du nom (extensions cachées par défaut sur certains systèmes).
 **Impact** : exécution de code malveillant si le destinataire ouvre le fichier en pensant que c'est un PDF.
-**Mesure** : détection systématique des doubles extensions, alerte automatique.
+**Mesure** : détection systématique des doubles extensions, blocage automatique de l'envoi.
 **Risque résiduel** : un nom de fichier à triple extension ou avec des caractères Unicode trompeurs (ex: caractères RTL) n'est pas couvert dans la version actuelle.
 
 ### 3. Fuite de données sensibles dans un fichier au nom neutre
@@ -29,6 +29,12 @@ Pour chaque menace : description, impact si elle se réalise, mesure mise en pla
 **Impact** : compromission du poste du destinataire (malware).
 **Mesure** : blocage systématique des types MIME dangereux (`application/x-dosexec`, scripts shell...), quelle que soit l'extension déclarée.
 **Risque résiduel** : les formats non répertoriés dans `TYPES_DANGEREUX` (ex: macros dans un document Office) ne sont pas couverts par cette règle.
+
+### 5. Faux positif bloquant un envoi légitime
+**Menace** : une règle de détection se déclenche à tort sur un mail légitime (ex: un document contenant le mot "confidentiel" dans un contexte normal, sans fuite réelle).
+**Impact** : blocage d'un envoi professionnel légitime, gêne opérationnelle pour l'utilisateur.
+**Mesure** : notification systématique à l'expéditeur avec la raison précise du blocage, permettant de comprendre et signaler l'erreur.
+**Risque résiduel** : aucun mécanisme de déblocage à ce stade (jalon 1) ; un mail bloqué à tort reste bloqué sans recours. Prévu au rendu final avec la validation graduée (justification + 2FA).
 
 ## Risques non couverts (hors périmètre jalon 1)
 
