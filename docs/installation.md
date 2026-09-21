@@ -21,7 +21,7 @@ Toujours vérifier que (venv) apparaît dans le prompt avant tout pip install, s
 
 ## 3. Configuration Postfix
 
-Ajouter dans /etc/postfix/master.cf :
+Ajouter à la fin de `/etc/postfix/master.cf` le service pipe et le point de réinjection sans filtre :
 
 safeguard unix - n n - - pipe
   flags=Rq user=andre argv=/home/andre/safeguard/venv/bin/python3 /home/andre/safeguard/filtre.py ${sender} ${recipient}
@@ -36,12 +36,24 @@ safeguard unix - n n - - pipe
   -o mynetworks=127.0.0.0/8
   -o smtpd_authorized_xforward_hosts=127.0.0.0/8
 
-Activer le filtre :
+Dans le même fichier, décommenter la ligne `submission` (généralement en tout début de fichier) et y ajouter le filtre :
 
-sudo postconf -e "content_filter=safeguard:dummy"
+submission inet n       -       y       -       -       smtpd
+  -o content_filter=safeguard:dummy
+  -o smtpd_recipient_restrictions=permit_mynetworks,reject
+
+⚠️ Le `content_filter` global (`sudo postconf -e "content_filter=..."`) ne doit **pas** être utilisé — il filtrerait aussi les mails entrants (port 25), ce qui ne correspond pas à un usage DCS. Le filtre doit être appliqué uniquement sur le port `submission`, comme indiqué ci-dessus. Vérifier qu'il est bien vide :
+
+sudo postconf content_filter
+# doit renvoyer : content_filter =
+
+Recharger Postfix :
+
 sudo systemctl reload postfix
 
-Pourquoi le port 10025 ? Sans ce second point d'entrée sans filtre, le mail réinjecté reboucle indéfiniment dans le filtre (too many hops). Voir docs/architecture.md.
+**Pourquoi le port 10025 ?** Sans ce second point d'entrée sans filtre, le mail réinjecté après analyse reboucle indéfiniment dans le filtre (`too many hops`). Voir `docs/architecture.md`.
+
+**Pourquoi le port submission (587) et pas le port 25 ?** Le port 25 reçoit les mails entrants ; le port submission reçoit les mails envoyés par les utilisateurs internes. Voir `docs/adr/003-filtrage-sortant.md`.
 
 ## 4. Initialisation de la base de données
 
@@ -57,12 +69,19 @@ conn.commit()
 ## 5. Vérification du déploiement
 
 sudo systemctl status postfix
-sudo postconf content_filter
+sudo grep -A 3 "^submission" /etc/postfix/master.cf
 
-Test bout en bout avec le script envoyer_test.py fourni, puis vérification du sujet et du journal :
+Créer le dossier de quarantaine s'il n'existe pas :
+
+mkdir -p quarantaine
+
+Test bout en bout avec le script `envoyer_test.py` fourni (configuré pour envoyer sur le port 587), avec une pièce jointe piégée :
 
 python3 envoyer_test.py
 sudo grep "Subject:" /var/mail/andre | tail -1
+ls -la quarantaine/
+
+Le mail original ne doit pas atteindre le destinataire : la dernière ligne de `/var/mail/andre` doit afficher une notification `[SAFEGUARD] Envoi bloqué`, et un fichier `.eml` doit apparaître dans `quarantaine/`.
 
 ## Problèmes rencontrés et solutions (retour d'expérience)
 
@@ -72,3 +91,4 @@ sudo grep "Subject:" /var/mail/andre | tail -1
 | too many hops | Le filtre réinjecte dans le même content_filter | Utiliser le port 10025 dédié |
 | ModuleNotFoundError en prod mais pas en test manuel | pip install lancé hors du venv | Vérifier (venv) avant chaque install |
 | sqlite3.OperationalError: table has no column | Colonne ajoutée au code mais pas à la base existante | Migration ALTER TABLE manuelle |
+| Filtrage appliqué aux mails entrants au lieu de sortants | content_filter appliqué globalement (port 25) au lieu du port submission | Filtrer uniquement le port submission (587), laisser le port 25 sans filtre |
