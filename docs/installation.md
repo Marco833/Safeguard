@@ -8,6 +8,10 @@ sudo apt install postfix mailutils libmagic1
 
 Lors de l'installation de Postfix, choisir "Site internet" dans la fenêtre de configuration.
 
+⚠️ Le fichier `filtre.py` contient en première ligne un "shebang" (`#!/home/andre/safeguard/venv/bin/python3`) qui doit être adapté au chemin réel de chaque installation. Après avoir cloné le dépôt et créé le venv, modifier cette première ligne pour qu'elle pointe vers `/home/VOTRE-USERNAME/Safeguard/venv/bin/python3`.
+
+Les autres chemins (base de données, quarantaine) sont calculés automatiquement par le script, aucune autre modification n'est nécessaire.
+
 ## 2. Environnement Python
 
 Debian bloque pip install au niveau système (PEP 668). Un environnement virtuel est obligatoire :
