@@ -13,6 +13,8 @@ import hashlib
 import sqlite3
 from datetime import datetime
 
+DOSSIER_PROJET = os.path.dirname(os.path.abspath(__file__))
+
 EXTENSIONS_ATTENDUES = {
     "application/pdf": [".pdf"],
     "image/png": [".png"],
@@ -69,7 +71,7 @@ def calculer_empreinte(chemin):
     return sha256.hexdigest()
 
 def journaliser(nom, empreinte, vrai_type, extension, coherent, mot_sensible=None):
-    conn = sqlite3.connect("/home/andre/safeguard/journal.db")
+    conn = sqlite3.connect(os.path.join(DOSSIER_PROJET, "journal.db"))
     cur = conn.cursor()
     cur.execute("""
         CREATE TABLE IF NOT EXISTS analyses (
@@ -134,7 +136,7 @@ def notifier_expediteur(sender, sujet_original, raisons):
 
 def mettre_en_quarantaine(msg):
     horodatage = datetime.now().strftime("%Y%m%d_%H%M%S")
-    chemin = f"/home/andre/safeguard/quarantaine/{horodatage}.eml"
+    chemin = os.path.join(DOSSIER_PROJET, "quarantaine", f"{horodatage}.eml")
     with open(chemin, "wb") as f:
         f.write(msg.as_bytes())
     return chemin
