@@ -12,7 +12,7 @@ with open("recette_innocente.pdf", "rb") as f:
 
 msg.add_attachment(contenu, maintype="application", subtype="pdf", filename="recette_innocente.pdf")
 
-with smtplib.SMTP("localhost") as smtp:
+with smtplib.SMTP("localhost", 587) as smtp:
     smtp.send_message(msg)
 
 print("Mail envoyé.")
